@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Advanced Loan Calculator — HOLY FAMILY SCHOOL, NUTA</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    :root{ --accent:#0b76ef; --muted:#666; --card-bg:#fff; --surface:#f8f9fb; --radius:12px; }
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#f3f6fb 0%, #ffffff 100%); color:#122; }
+    .wrap{max-width:1100px;margin:18px auto;padding:18px;}
+    .card{background:var(--card-bg);border-radius:var(--radius);box-shadow:0 8px 28px rgba(16,24,40,0.06);padding:14px;}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:12px;justify-content:space-between;}
+    .brand {display:flex; gap:12px; align-items:center;}
+    .brand .logo { width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7ab7ff); display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;box-shadow:0 4px 12px rgba(11,118,239,0.12); }
+    .brand .names {line-height:1;} .brand .school {font-weight:700;font-size:16px;} .brand .sub {font-size:12px;color:var(--muted);margin-top:2px;}
+    h1{font-size:18px;margin:0;} .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;} label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
+    input[type="number"], select, input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;box-sizing:border-box;font-size:14px;}
+    .controls {grid-column:span 12; display:flex;gap:8px;flex-wrap:wrap;align-items:center;} button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;} button.ghost{background:#fff;border:1px solid #e6e9ef;color:#122;}
+    .col-4{grid-column:span 4;} .col-3{grid-column:span 3;} .col-6{grid-column:span 6;} .col-12{grid-column:span 12;} .small{font-size:13px;color:var(--muted);} .results-row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;} .stat{background:var(--surface);padding:12px;border-radius:10px;min-width:150px;}
+    #charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;} canvas{background:#fff;border-radius:8px;padding:8px;} table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;} th,td{padding:8px;border-bottom:1px solid #f0f2f6;text-align:right;} th{background:#fbfdff;font-weight:600;} .muted{color:var(--muted);font-size:13px;} footer{margin-top:12px;padding:10px 14px;border-radius:10px;background:linear-gradient(180deg,#ffffff, #fbfdff);display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--muted);} .credit {font-weight:600;color:#122;font-size:13px;}
+    @media (max-width:900px){ .col-4,.col-3,.col-6{grid-column:span 12;} #charts{grid-template-columns:1fr;} header{flex-direction:column;align-items:flex-start;gap:8px;} }
+    /* Tabs */
+    .tabs{display:flex;gap:8px;margin-bottom:12px;}
+    .tab-btn{background:#fff;border:1px solid #e6e9ef;padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--muted);} .tab-btn.active{background:linear-gradient(90deg,var(--accent),#7ab7ff);color:#fff;border-color:transparent;}
+    .tab-panel{display:none;} .tab-panel.active{display:block;}
+    /* small meter */
+    .meter{height:12px;background:#f0f2f6;border-radius:8px;overflow:hidden;} .meter > i{display:block;height:100%;}
+  </style>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header style=" align-items: center;">
+        <div class="brand" aria-hidden="true">
+          <div class="logo">HFS</div>
+          <div class="names">
+            <div class="school">HOLY FAMILY SCHOOL, NUTA</div>
+            <div class="sub">Affiliated to CISCE WB - 438</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;">
+          <div style="font-weight:700">Advanced Loan Calculator</div>
+          <div class="small">Created by Department of Mathematics</div>
+        </div>
+      </header>
+
+      <!-- Tabs -->
+      <div class="tabs" role="tablist" aria-label="Calculator tabs">
+        <button class="tab-btn active" data-tab="calc">Calculator</button>
+        <button class="tab-btn" data-tab="elig">Eligibility</button>
+        <button class="tab-btn" data-tab="real">Real Cost</button>
+        <button class="tab-btn" data-tab="health">Loan Health</button>
+      </div>
+
+      <!-- Calculator tab -->
+      <div id="calc" class="tab-panel active">
+        <div class="grid" style="align-items:end;">
+          <div class="col-3">
+            <label>Loan type (preset)</label>
+            <select id="loanType">
+              <option value="home">HDFC Home Loan (20 yrs @ 8%)</option>
+              <option value="car">ICICI Car Loan (5 yrs @ 9%)</option>
+              <option value="personal">IFL Personal Loan (4 yrs @ 14%)</option>
+              <option value="education">SBI Education Loan (8 yrs @ 10%)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="col-3">
+            <label>Principal</label>
+            <input id="principal" type="number" min="0" step="0.01" value="500000" />
+          </div>
+
+          <div class="col-3">
+            <label>Annual interest rate (%)</label>
+            <input id="annualRate" type="number" min="0" step="0.01" value="8" />
+          </div>
+
+          <div class="col-3">
+            <label>Term</label>
+            <div style="display:flex;gap:8px;">
+              <input id="termValue" type="number" min="1" step="1" value="20" />
+              <select id="termUnit">
+                <option value="years">years</option>
+                <option value="months">months</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Extras -->
+          <div class="col-4">
+            <label>Monthly extra payment (optional)</label>
+            <input id="monthlyExtra" type="number" min="0" step="0.01" value="0" />
+          </div>
+
+          <div class="col-4">
+            <label>Annual extra payment (one each year)</label>
+            <input id="annualExtra" type="number" min="0" step="0.01" value="10000" />
+          </div>
+
+          <div class="col-4">
+            <label>Annual extra month</label>
+            <select id="annualMonth">
+              <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+              <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+              <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+
+          <div class="col-3">
+            <label>Annual inflation rate (%)</label>
+            <input id="inflationRate" type="number" min="0" step="0.01" value="5" />
+          </div>
+
+          <div class="col-9 controls">
+            <button id="calcBtn">Calculate & Update Charts</button>
+            <button class="ghost" id="resetBtn">Reset</button>
+            <button class="ghost" id="downloadBtn">Download Schedule (CSV)</button>
+          </div>
+        </div>
+
+        <!-- Summary stats -->
+        <div class="results-row">
+          <div class="stat">
+            <div class="small">Standard monthly EMI</div>
+            <div id="monthlyEMI" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+
+          <div class="stat">
+            <div class="small">With extras — Number of payments</div>
+            <div id="numPayments" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+
+          <div class="stat">
+            <div class="small">Total interest (with extras)</div>
+            <div id="totalInterest" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+
+          <div class="stat">
+            <div class="small">Interest saved (vs no extras)</div>
+            <div id="interestSaved" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div id="calcCharts" style="margin-top:12px;">
+          <div id="charts" style="display:grid; grid-template-columns:1fr; gap:12px;">
+            <div class="card" style="padding:10px;">
+              <div class="small">Balance vs Time</div>
+              <canvas id="balanceChart" height="120" width="100%"></canvas>
+            </div>
+
+            <div class="card" style="padding:10px;">
+              <div class="small">Annual interest paid</div>
+              <canvas id="annualInterestChart" height="120" width="100%"></canvas>
+            </div>
+
+            <div class="card" style="padding:10px;">
+              <div class="small">Principal vs Interest (total)</div>
+              <canvas id="pieChart" height="30" width="100%"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Amortization table -->
+        <div style="margin-top:12px;">
+          <div class="small">Amortization schedule (with extras). Rows highlighted where annual extra is applied.</div>
+          <div style="overflow:auto; max-height:360px;">
+            <table id="scheduleTable" aria-live="polite">
+              <thead>
+                <tr>
+                  <th>Payment #</th>
+                  <th>Payment</th>
+                  <th>Principal</th>
+                  <th>Interest</th>
+                  <th>Monthly Extra</th>
+                  <th>Annual Extra</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody id="scheduleBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eligibility tab -->
+      <div id="elig" class="tab-panel">
+        <div class="grid" style="align-items:end;">
+          <div class="col-4">
+            <label>Monthly income</label>
+            <input id="monthlyIncome" type="number" min="0" step="0.01" value="50000" />
+          </div>
+
+          <div class="col-4">
+            <label>Current monthly debt payments</label>
+            <input id="currentDebt" type="number" min="0" step="0.01" value="5000" />
+          </div>
+
+          <div class="col-4">
+            <label>Credit score</label>
+            <input id="creditScore" type="number" min="300" max="850" step="1" value="720" />
+          </div>
+
+          <div class="col-12 controls">
+            <button id="estimateBtn">Estimate Eligibility</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+          <div class="stat" style="min-width:220px;">
+            <div class="small">Debt-to-Income (DTI)</div>
+            <div id="dtiVal" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+
+          <div class="stat" style="min-width:220px;">
+            <div class="small">Max recommended monthly payment</div>
+            <div id="maxPaymentVal" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+
+          <div class="stat" style="min-width:220px;">
+            <div class="small">Eligibility (basic)</div>
+            <div id="eligibleVal" style="font-size:18px;margin-top:6px;">—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="small">Notes</div>
+          <ul class="muted">
+            <li>Benchmarks used: DTI &lt; 45% typical approval, &lt;35% preferred.</li>
+            <li>Credit score influences terms — this estimator is indicative, not definitive.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Real cost tab -->
+      <div id="real" class="tab-panel">
+        <div class="small">Shows nominal vs inflation-adjusted (real) balances and PV of payments using the inflation rate supplied in Calculator tab.</div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="card" style="padding:10px;">
+            <div class="small">Nominal vs Real Balance</div>
+            <canvas id="realBalanceChart" height="280"></canvas>
+          </div>
+
+          <div class="card" style="padding:10px;">
+            <div class="small">Cumulative real cost vs nominal</div>
+            <canvas id="realCumulativeChart" height="280"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loan health tab -->
+      <div id="health" class="tab-panel">
+        <div class="small">Loan health score (0-100) composed from DTI, credit score, payment burden and inflation risk.</div>
+
+        <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div style="min-width:260px;padding:12px;background:var(--surface);border-radius:10px;">
+            <div class="small">Health Score</div>
+            <div id="healthScore" style="font-size:28px;font-weight:700;margin-top:6px;">—</div>
+            <div style="margin-top:8px;">Breakdown</div>
+            <div style="margin-top:6px;">
+              <div class="small">DTI (40%)</div>
+              <div class="meter" aria-hidden="true"><i id="dtiMeter" style="width:0%;background:linear-gradient(90deg,#ffb199,#ff7a59);"></i></div>
+              <div class="small" style="margin-top:6px">Credit (30%)</div>
+              <div class="meter"><i id="creditMeter" style="width:0%;background:linear-gradient(90deg,#b8f0a6,#39b54a);"></i></div>
+              <div class="small" style="margin-top:6px">Payment burden (20%)</div>
+              <div class="meter"><i id="piMeter" style="width:0%;background:linear-gradient(90deg,#cfe0ff,#0b76ef);"></i></div>
+              <div class="small" style="margin-top:6px">Inflation risk (10%)</div>
+              <div class="meter"><i id="inflationMeter" style="width:0%;background:linear-gradient(90deg,#ffd98f,#ffb400);"></i></div>
+            </div>
+          </div>
+
+          <div style="flex:1;min-width:220px;padding:12px;background:var(--surface);border-radius:10px;">
+            <div class="small">Interpretation</div>
+            <div id="healthNote" style="margin-top:8px;color:var(--muted);">—</div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div>
+          <div class="credit">HOLY FAMILY SCHOOL, NUTA</div>
+          <div class="muted">Affiliated to CISCE WB - 438</div>
+        </div>
+        <div class="small">Created by Department of Mathematics</div>
+      </footer>
+    </div>
+  </div>
+
+<script>
+/* Utilities */
+function fmt(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function toFixedSafe(x){ return Number(Math.round((x + Number.EPSILON) * 100) / 100); }
+
+/* Loan math (same as before) */
+function monthlyEMI(principal, annualRatePct, nPayments){
+  const r = (annualRatePct/100)/12;
+  if (r === 0) return principal / nPayments;
+  return principal * r / (1 - Math.pow(1 + r, -nPayments));
+}
+
+function buildSchedule(principal, annualRatePct, nPayments, monthlyExtra, annualExtra, annualMonth, monthlyPaymentParam){
+  const r = (annualRatePct/100)/12;
+  let balance = principal;
+  const rows = [];
+  let paymentIndex = 0;
+  const cap = 20000;
+  while (balance > 0.0005 && paymentIndex < cap){
+    paymentIndex++;
+    const interest = r === 0 ? 0 : balance * r;
+    let principalPortion = monthlyPaymentParam - interest;
+    if (principalPortion < 0) principalPortion = 0;
+    let appliedMonthlyExtra = Math.min(monthlyExtra, Math.max(0, balance - principalPortion));
+    const mod = ((paymentIndex - 1) % 12) + 1;
+    let appliedAnnualExtra = 0;
+    if (annualExtra > 0 && mod === annualMonth){
+      appliedAnnualExtra = Math.min(annualExtra, Math.max(0, balance - principalPortion - appliedMonthlyExtra));
+    }
+    let totalPrincipalPaid = principalPortion + appliedMonthlyExtra + appliedAnnualExtra;
+    if (totalPrincipalPaid > balance){
+      totalPrincipalPaid = balance;
+      appliedAnnualExtra = Math.max(0, totalPrincipalPaid - principalPortion - appliedMonthlyExtra);
+    }
+    const paymentAmount = interest + totalPrincipalPaid;
+    balance = Math.max(0, balance - totalPrincipalPaid);
+    rows.push({ idx: paymentIndex, payment: toFixedSafe(paymentAmount), principalPaid: toFixedSafe(totalPrincipalPaid), interest: toFixedSafe(interest), monthlyExtra: toFixedSafe(appliedMonthlyExtra), annualExtra: toFixedSafe(appliedAnnualExtra), balance: toFixedSafe(balance) });
+    if (paymentIndex > nPayments + 120 && balance > 0.01) break;
+  }
+  return rows;
+}
+
+/* DOM refs */
+const get = id => document.getElementById(id);
+const loanTypeEl = get('loanType');
+const principalEl = get('principal');
+const annualRateEl = get('annualRate');
+const termValueEl = get('termValue');
+const termUnitEl = get('termUnit');
+const monthlyExtraEl = get('monthlyExtra');
+const annualExtraEl = get('annualExtra');
+const annualMonthEl = get('annualMonth');
+const inflationEl = get('inflationRate');
+const calcBtn = get('calcBtn');
+const downloadBtn = get('downloadBtn');
+const resetBtn = get('resetBtn');
+const estimateBtn = get('estimateBtn');
+
+const monthlyEMIDisplay = get('monthlyEMI');
+const numPaymentsDisplay = get('numPayments');
+const totalInterestDisplay = get('totalInterest');
+const interestSavedDisplay = get('interestSaved');
+const scheduleBody = get('scheduleBody');
+
+const dtiVal = get('dtiVal');
+const maxPaymentVal = get('maxPaymentVal');
+const eligibleVal = get('eligibleVal');
+
+const healthScoreEl = get('healthScore');
+const dtiMeter = get('dtiMeter');
+const creditMeter = get('creditMeter');
+const piMeter = get('piMeter');
+const inflationMeter = get('inflationMeter');
+const healthNote = get('healthNote');
+
+let balanceChart, annualChart, pieChart, realBalanceChart, realCumChart;
+
+/* Presets */
+function applyPreset(preset){
+  switch(preset){
+    case 'home': annualRateEl.value = 8; termValueEl.value = 20; termUnitEl.value = 'years'; break;
+    case 'car': annualRateEl.value = 9; termValueEl.value = 5; termUnitEl.value = 'years'; break;
+    case 'personal': annualRateEl.value = 14; termValueEl.value = 4; termUnitEl.value = 'years'; break;
+    case 'education': annualRateEl.value = 10; termValueEl.value = 8; termUnitEl.value = 'years'; break;
+    case 'custom': break;
+  }
+}
+
+/* Charts creation */
+function createCharts(){
+  const bctx = get('balanceChart').getContext('2d');
+  balanceChart = new Chart(bctx, { type: 'line', data: { labels: [], datasets: [ { label:'Balance (No extras)', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#cfcfd6' }, { label:'Balance (With extras)', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#0b76ef' } ] }, options: { plugins:{legend:{position:'bottom'}}, scales:{x:{display:true,title:{display:true,text:'Payment #'}}, y:{display:true,title:{display:true,text:'Balance'}}} } });
+
+  const actx = get('annualInterestChart').getContext('2d');
+  annualChart = new Chart(actx, { type: 'bar', data: { labels: [], datasets: [{ label:'Annual interest (with extras)', data: [], borderWidth:1 }] }, options: { plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Year'}}, y:{title:{display:true,text:'Interest paid'}}} } });
+
+  const pctx = get('pieChart').getContext('2d');
+  pieChart = new Chart(pctx, { type: 'pie', data: { labels:['Principal repaid','Interest paid'], datasets:[{data:[0,0], borderWidth:0}] }, options:{plugins:{legend:{position:'bottom'}}} });
+
+  const rctx = get('realBalanceChart').getContext('2d');
+  realBalanceChart = new Chart(rctx, { type: 'line', data: { labels: [], datasets: [ { label:'Nominal balance', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#cfcfd6' }, { label:'Real balance (inflation-adjusted)', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#ff7a59' } ] }, options: { plugins:{legend:{position:'bottom'}}, scales:{x:{title:{display:true,text:'Payment #'}}, y:{title:{display:true,text:'Balance (real/nominal)'}}} } });
+
+  const rcctx = get('realCumulativeChart').getContext('2d');
+  realCumChart = new Chart(rcctx, { type: 'line', data: { labels: [], datasets: [ { label:'Cumulative nominal paid', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#0b76ef' }, { label:'Cumulative real (PV) paid', data: [], borderWidth:2, tension:0.3, fill:false, borderColor:'#ffd86b' } ] }, options: { plugins:{legend:{position:'bottom'}}, scales:{x:{title:{display:true,text:'Payment #'}}, y:{title:{display:true,text:'Cumulative paid'}}} } });
+}
+
+/* Aggregation helpers */
+function aggregateAnnualInterest(rows){ const ann = {}; rows.forEach(r => { const year = Math.floor((r.idx - 1) / 12) + 1; ann[year] = (ann[year] || 0) + Number(r.interest); }); const years = Object.keys(ann).map(y=>Number(y)).sort((a,b)=>a-b); return { years, values: years.map(y => toFixedSafe(ann[y])) }; }
+
+/* Core calculate and update UI */
+function doCalculate(){
+  const principal = Number(principalEl.value) || 0;
+  const annualRate = Number(annualRateEl.value) || 0;
+  let termValue = Number(termValueEl.value) || 0; const unit = termUnitEl.value;
+  let nPayments = unit === 'years' ? termValue * 12 : termValue; if (nPayments <= 0) nPayments = 1;
+  const monthlyExtra = Number(monthlyExtraEl.value) || 0; const annualExtra = Number(annualExtraEl.value) || 0; const annualMonth = Number(annualMonthEl.value) || 1;
+  const inflationRate = Number(inflationEl.value) / 100 || 0;
+
+  const baseMonthly = monthlyEMI(principal, annualRate, nPayments);
+  const scheduleNoExtras = buildSchedule(principal, annualRate, nPayments, 0, 0, 1, baseMonthly);
+  const totalInterestNoExtras = scheduleNoExtras.reduce((s,r)=>s + Number(r.interest), 0);
+  const scheduleWithExtras = buildSchedule(principal, annualRate, nPayments, monthlyExtra, annualExtra, annualMonth, baseMonthly);
+  const totalInterestWithExtras = scheduleWithExtras.reduce((s,r)=>s + Number(r.interest), 0);
+
+  monthlyEMIDisplay.textContent = fmt(baseMonthly);
+  numPaymentsDisplay.textContent = scheduleWithExtras.length;
+  totalInterestDisplay.textContent = fmt(totalInterestWithExtras);
+  interestSavedDisplay.textContent = fmt(Math.max(0, totalInterestNoExtras - totalInterestWithExtras));
+
+  // Table
+  scheduleBody.innerHTML = '';
+  for (const r of scheduleWithExtras){ const tr = document.createElement('tr'); const isAnnual = Number(r.annualExtra) > 0; if (isAnnual) tr.style.background = 'linear-gradient(90deg, rgba(11,118,239,0.04), rgba(11,118,239,0.02))'; tr.innerHTML = `\n      <td style="text-align:right">${r.idx}</td>\n      <td>${fmt(r.payment)}</td>\n      <td>${fmt(r.principalPaid - r.monthlyExtra - r.annualExtra)}</td>\n      <td>${fmt(r.interest)}</td>\n      <td>${fmt(r.monthlyExtra)}</td>\n      <td>${fmt(r.annualExtra)}</td>\n      <td>${fmt(r.balance)}</td>\n    `; scheduleBody.appendChild(tr); }
+
+  // Charts: balance
+  const maxLen = Math.max(scheduleNoExtras.length, scheduleWithExtras.length);
+  const labels = Array.from({length:maxLen},(_,i)=>i+1);
+  const balNo = labels.map(i => { const row = scheduleNoExtras[i-1]; return row ? row.balance : 0; });
+  const balWith = labels.map(i => { const row = scheduleWithExtras[i-1]; return row ? row.balance : 0; });
+  balanceChart.data.labels = labels; balanceChart.data.datasets[0].data = balNo; balanceChart.data.datasets[1].data = balWith; balanceChart.update();
+
+  // Annual interest
+  const agg = aggregateAnnualInterest(scheduleWithExtras);
+  annualChart.data.labels = agg.years.map(y=>'Year '+y);
+  annualChart.data.datasets[0].data = agg.values;
+  annualChart.update();
+
+  // Pie
+  const totalPrincipalPaid = scheduleWithExtras.reduce((s,r)=>s + Number(r.principalPaid), 0);
+  pieChart.data.datasets[0].data = [toFixedSafe(totalPrincipalPaid), toFixedSafe(totalInterestWithExtras)];
+  pieChart.update();
+
+  // Real cost charts: compute real balance and PV of payments
+  const realBal = [];
+  const cumNom = []; const cumReal = [];
+  let cumN = 0, cumR = 0;
+  for (let i=0;i<labels.length;i++){
+    const idx = i+1;
+    const row = (scheduleWithExtras[idx-1]) || {balance:0, payment:0};
+    const bal = row.balance || 0;
+    const paymentAmt = (scheduleWithExtras[idx-1] && scheduleWithExtras[idx-1].payment) ? Number(scheduleWithExtras[idx-1].payment) : 0;
+    const years = idx/12;
+    const realBalance = inflationRate > 0 ? bal / Math.pow(1 + inflationRate, years) : bal;
+    realBal.push(toFixedSafe(realBalance));
+    cumN += paymentAmt; cumR += (inflationRate>0 ? paymentAmt / Math.pow(1+inflationRate, years) : paymentAmt);
+    cumNom.push(toFixedSafe(cumN)); cumReal.push(toFixedSafe(cumR));
+  }
+  realBalanceChart.data.labels = labels; realBalanceChart.data.datasets[0].data = balNo; realBalanceChart.data.datasets[1].data = realBal; realBalanceChart.update();
+  realCumChart.data.labels = labels; realCumChart.data.datasets[0].data = cumNom; realCumChart.data.datasets[1].data = cumReal; realCumChart.update();
+
+  // Save schedules for CSV
+  window._lastSchedule = scheduleWithExtras;
+  window._noExtrasSchedule = scheduleNoExtras;
+}
+
+/* CSV download */
+function downloadCSV(){ const rows = window._lastSchedule || []; if (rows.length === 0){ alert('No schedule available. Click Calculate first.'); return; } const header = ['Payment#','Payment','PrincipalPaid','Interest','MonthlyExtra','AnnualExtra','Balance']; const csvRows = [header.join(',')]; for (const r of rows){ csvRows.push([r.idx, r.payment.toFixed(2), r.principalPaid.toFixed(2), r.interest.toFixed(2), r.monthlyExtra.toFixed(2), r.annualExtra.toFixed(2), r.balance.toFixed(2)].join(',')); } const blob = new Blob([csvRows.join('\n')], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'amortization_with_extras.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+
+/* Eligibility & health calculations */
+function creditWeightFromScore(creditScore){ if (creditScore >= 750) return 1.0; if (creditScore >= 700) return 0.9; if (creditScore >= 650) return 0.75; if (creditScore >= 600) return 0.6; return 0.4; }
+
+function estimateEligibility(){ const monthlyIncome = Number(get('monthlyIncome').value) || 0; const currentDebt = Number(get('currentDebt').value) || 0; const creditScore = Number(get('creditScore').value) || 0; const principal = Number(principalEl.value) || 0; const annualRate = Number(annualRateEl.value) || 0; let termValue = Number(termValueEl.value) || 0; const unit = termUnitEl.value; let nPayments = unit === 'years' ? termValue * 12 : termValue; if (nPayments <= 0) nPayments = 1; const baseMonthly = monthlyEMI(principal, annualRate, nPayments);
+  const proposedDTI = (currentDebt + baseMonthly) / Math.max(1, monthlyIncome);
+  const creditWeight = creditWeightFromScore(creditScore);
+  const maxPayment = monthlyIncome * 0.33; // heuristic
+  const eligible = proposedDTI < 0.45 && creditWeight >= 0.6;
+  dtiVal.textContent = (proposedDTI*100).toFixed(02) + '%'; maxPaymentVal.textContent = fmt(maxPayment); eligibleVal.textContent = eligible ? 'Likely eligible' : 'Possibly not eligible';
+
+  // Health score compute and display
+  const DTI_Score = 100 - Math.min(100, proposedDTI * 150);
+  const PI_Score = 100 - Math.min(100, (baseMonthly / Math.max(1, monthlyIncome)) * 200);
+  const inflationRate = Number(inflationEl.value)/100 || 0;
+  const InflationRisk = 100 - Math.min(100, inflationRate * 500);
+  const healthScore = toFixedSafe(0.4 * DTI_Score + 0.3 * (creditWeight * 100) + 0.2 * PI_Score + 0.1 * InflationRisk);
+
+  // update health tab elements
+  healthScoreEl.textContent = healthScore;
+  dtiMeter.style.width = Math.max(0,Math.min(100, DTI_Score)) + '%';
+  creditMeter.style.width = (creditWeight * 100) + '%';
+  piMeter.style.width = Math.max(0,Math.min(100, PI_Score)) + '%';
+  inflationMeter.style.width = Math.max(0,Math.min(100, InflationRisk)) + '%';
+  if (healthScore > 80) { healthNote.textContent = 'Excellent — low risk. Good credit & manageable payments.'; }
+  else if (healthScore > 60) { healthNote.textContent = 'Good — some caution. Consider lowering extras or term.'; }
+  else if (healthScore > 40) { healthNote.textContent = 'Fair — risk present. Improve credit or reduce loan size.'; }
+  else { healthNote.textContent = 'Poor — likely to struggle with this loan at current terms.'; }
+}
+
+/* Reset */
+function resetAll(){ loanTypeEl.value = 'home'; applyPreset('home'); principalEl.value = 500000; annualRateEl.value = 8; termValueEl.value = 20; termUnitEl.value = 'years'; monthlyExtraEl.value = 0; annualExtraEl.value = 10000; annualMonthEl.value = 3; inflationEl.value = 5; get('monthlyIncome').value = 50000; get('currentDebt').value = 5000; get('creditScore').value = 720; doCalculate(); }
+
+/* Tabs wiring */
+const tabs = document.querySelectorAll('.tab-btn'); tabs.forEach(b => b.addEventListener('click', ()=>{ tabs.forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active')); document.getElementById(b.dataset.tab).classList.add('active'); }));
+
+/* Events */
+loanTypeEl.addEventListener('change', ()=>{ applyPreset(loanTypeEl.value); });
+calcBtn.addEventListener('click', ()=>{ doCalculate(); estimateEligibility(); });
+downloadBtn.addEventListener('click', downloadCSV);
+resetBtn.addEventListener('click', resetAll);
+estimateBtn.addEventListener('click', estimateEligibility);
+
+/* Init */
+createCharts(); resetAll();
+
+</script>
+</body>
+</html>
